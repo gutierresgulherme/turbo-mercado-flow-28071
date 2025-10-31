@@ -6,68 +6,98 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-async function sendWebhook(supabase: any, userId: string, eventType: string, paymentData: any) {
-  try {
-    const { data: settings } = await supabase
-      .from("webhook_settings")
-      .select("*")
-      .eq("user_id", userId)
-      .eq("is_active", true)
-      .maybeSingle();
+async function sendWebhook(supabase: any, userId: string, eventType: string, paymentData: any, maxRetries = 3) {
+  let attempt = 0;
+  
+  while (attempt < maxRetries) {
+    try {
+      const { data: settings } = await supabase
+        .from("webhook_settings")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("is_active", true)
+        .maybeSingle();
 
-    if (!settings) {
-      console.log("⚠️ Nenhuma webhook configurada para o usuário");
-      return;
+      if (!settings) {
+        console.log("⚠️ Nenhuma webhook configurada para o usuário");
+        return;
+      }
+
+      const payload = {
+        event_type: eventType,
+        payment_id: paymentData.id,
+        email: paymentData.email,
+        amount: paymentData.amount,
+        status: paymentData.status,
+        payment_method: paymentData.payment_method,
+        timestamp: new Date().toISOString(),
+      };
+
+      console.log(`📤 Tentativa ${attempt + 1}/${maxRetries} - Enviando webhook para:`, settings.webhook_url);
+
+      const response = await fetch(settings.webhook_url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(10000), // 10 second timeout
+      });
+
+      const responseBody = await response.text();
+      const success = response.ok;
+
+      console.log(`${success ? "✅" : "❌"} Webhook ${success ? "enviado" : "falhou"}:`, response.status);
+
+      await supabase.from("webhook_logs").insert({
+        user_id: userId,
+        webhook_url: settings.webhook_url,
+        event_type: eventType,
+        payload: payload,
+        response_status: response.status,
+        response_body: responseBody.substring(0, 1000),
+        success: success,
+        source: 'mercado_pago',
+      });
+
+      if (success) {
+        return; // Success, exit retry loop
+      }
+
+      // If not successful and we have retries left, wait before retrying
+      if (attempt < maxRetries - 1) {
+        const waitTime = Math.pow(2, attempt) * 1000; // Exponential backoff: 1s, 2s, 4s
+        console.log(`⏳ Aguardando ${waitTime}ms antes de tentar novamente...`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+      }
+
+    } catch (error) {
+      console.error(`❌ Erro na tentativa ${attempt + 1}:`, error);
+      
+      // Log the error only on the last attempt
+      if (attempt === maxRetries - 1) {
+        await supabase.from("webhook_logs").insert({
+          user_id: userId,
+          webhook_url: "error",
+          event_type: eventType,
+          payload: paymentData,
+          response_status: 0,
+          response_body: error instanceof Error ? error.message : "Unknown error",
+          success: false,
+          source: 'mercado_pago',
+        });
+      } else {
+        // Wait before retrying
+        const waitTime = Math.pow(2, attempt) * 1000;
+        console.log(`⏳ Aguardando ${waitTime}ms antes de tentar novamente...`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+      }
     }
-
-    const payload = {
-      event_type: eventType,
-      payment_id: paymentData.id,
-      email: paymentData.email,
-      amount: paymentData.amount,
-      status: paymentData.status,
-      payment_method: paymentData.payment_method,
-      timestamp: new Date().toISOString(),
-    };
-
-    console.log("📤 Enviando webhook para:", settings.webhook_url);
-
-    const response = await fetch(settings.webhook_url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
-
-    const responseBody = await response.text();
-    const success = response.ok;
-
-    console.log(`${success ? "✅" : "❌"} Webhook ${success ? "enviado" : "falhou"}:`, response.status);
-
-    await supabase.from("webhook_logs").insert({
-      user_id: userId,
-      webhook_url: settings.webhook_url,
-      event_type: eventType,
-      payload: payload,
-      response_status: response.status,
-      response_body: responseBody.substring(0, 1000),
-      success: success,
-    });
-
-  } catch (error) {
-    console.error("❌ Erro ao enviar webhook:", error);
     
-    await supabase.from("webhook_logs").insert({
-      user_id: userId,
-      webhook_url: "error",
-      event_type: eventType,
-      payload: paymentData,
-      response_status: 0,
-      response_body: error instanceof Error ? error.message : "Unknown error",
-      success: false,
-    });
+    attempt++;
   }
+  
+  console.error("❌ Todas as tentativas de envio falharam");
 }
 
 serve(async (req) => {
@@ -75,7 +105,8 @@ serve(async (req) => {
 
   try {
     const body = await req.json();
-    console.log("📬 Webhook recebido:", JSON.stringify(body, null, 2));
+    console.log("📬 Webhook do Mercado Pago recebido:", JSON.stringify(body, null, 2));
+    console.log("🔍 Headers da requisição:", Object.fromEntries(req.headers));
 
     const paymentId = body.data?.id;
     if (!paymentId) return new Response(JSON.stringify({ ok: false }), { headers: corsHeaders });

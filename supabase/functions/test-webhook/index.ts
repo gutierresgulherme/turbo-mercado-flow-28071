@@ -76,6 +76,7 @@ Deno.serve(async (req) => {
       response_status: response.status,
       response_body: responseBody.substring(0, 1000),
       success: success,
+      source: 'manual_test',
     });
 
     return new Response(

@@ -86,36 +86,36 @@ const Index = () => {
       {/* Hero Section */}
       <div className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-secondary/10" />
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-          <div className="text-center space-y-8">
-            <Badge className="bg-primary/20 text-primary border-primary/30 px-4 py-2 text-sm">
+        <div className="relative w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 md:py-20">
+          <div className="text-center space-y-6 sm:space-y-8">
+            <Badge className="bg-primary/20 text-primary border-primary/30 px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm">
               🚀 IA Powered
             </Badge>
-            <h1 className="text-5xl md:text-7xl font-bold bg-gradient-primary bg-clip-text text-transparent animate-in fade-in slide-in-from-bottom-4 duration-1000">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-bold bg-gradient-primary bg-clip-text text-transparent animate-in fade-in slide-in-from-bottom-4 duration-1000 px-2">
               Scale Turbo Shopee
             </h1>
-            <p className="text-xl md:text-2xl text-muted-foreground max-w-3xl mx-auto animate-in fade-in slide-in-from-bottom-5 duration-1000 delay-150">
+            <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-muted-foreground max-w-3xl mx-auto animate-in fade-in slide-in-from-bottom-5 duration-1000 delay-150 px-4">
               Crie anúncios profissionais para Shopee em segundos usando
               Inteligência Artificial avançada
             </p>
 
             {/* CTA Card */}
-            <Card className="max-w-md mx-auto border-primary/30 bg-card/60 backdrop-blur-lg shadow-glow-orange animate-in fade-in slide-in-from-bottom-6 duration-1000 delay-300">
-              <CardContent className="p-8 space-y-6">
+            <Card className="w-full max-w-md mx-auto border-primary/30 bg-card/60 backdrop-blur-lg shadow-glow-orange animate-in fade-in slide-in-from-bottom-6 duration-1000 delay-300">
+              <CardContent className="p-6 sm:p-8 space-y-5 sm:space-y-6">
                 <div className="space-y-2">
                   <div className="flex items-baseline justify-center gap-2">
-                    <span className="text-5xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+                    <span className="text-4xl sm:text-5xl font-bold bg-gradient-primary bg-clip-text text-transparent">
                       R$ 37,90
                     </span>
                   </div>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-xs sm:text-sm text-muted-foreground">
                     Pagamento único • Acesso vitalício
                   </p>
                 </div>
 
                 <Button
                   size="lg"
-                  className="w-full bg-gradient-primary hover:opacity-90 text-lg font-semibold shadow-glow-orange transition-all hover:scale-105"
+                  className="w-full bg-gradient-primary hover:opacity-90 text-base sm:text-lg font-semibold shadow-glow-orange transition-all hover:scale-105 py-5 sm:py-6"
                   onClick={handleCheckout}
                   disabled={isProcessing}
                 >

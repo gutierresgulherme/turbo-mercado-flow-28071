@@ -25,6 +25,7 @@ interface WebhookLog {
   success: boolean;
   response_status: number | null;
   created_at: string;
+  source: string;
 }
 
 const WebhookSettings = () => {
@@ -263,6 +264,7 @@ const WebhookSettings = () => {
                   <TableRow>
                     <TableHead>Data/Hora</TableHead>
                     <TableHead>Evento</TableHead>
+                    <TableHead>Origem</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Código</TableHead>
                   </TableRow>
@@ -275,6 +277,14 @@ const WebhookSettings = () => {
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline">{log.event_type}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge 
+                          variant={log.source === 'manual_test' ? 'secondary' : 'default'}
+                          className="text-xs"
+                        >
+                          {log.source === 'manual_test' ? '🧪 Teste' : '💳 Pagamento Real'}
+                        </Badge>
                       </TableCell>
                       <TableCell>
                         {log.success ? (

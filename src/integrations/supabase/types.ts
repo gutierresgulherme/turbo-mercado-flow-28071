@@ -151,6 +151,7 @@ export type Database = {
           payload: Json
           response_body: string | null
           response_status: number | null
+          source: string
           success: boolean
           user_id: string
           webhook_url: string
@@ -162,6 +163,7 @@ export type Database = {
           payload: Json
           response_body?: string | null
           response_status?: number | null
+          source?: string
           success?: boolean
           user_id: string
           webhook_url: string
@@ -173,6 +175,7 @@ export type Database = {
           payload?: Json
           response_body?: string | null
           response_status?: number | null
+          source?: string
           success?: boolean
           user_id?: string
           webhook_url?: string
