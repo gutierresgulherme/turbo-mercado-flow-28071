@@ -6,6 +6,70 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+async function sendWebhook(supabase: any, userId: string, eventType: string, paymentData: any) {
+  try {
+    const { data: settings } = await supabase
+      .from("webhook_settings")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("is_active", true)
+      .maybeSingle();
+
+    if (!settings) {
+      console.log("⚠️ Nenhuma webhook configurada para o usuário");
+      return;
+    }
+
+    const payload = {
+      event_type: eventType,
+      payment_id: paymentData.id,
+      email: paymentData.email,
+      amount: paymentData.amount,
+      status: paymentData.status,
+      payment_method: paymentData.payment_method,
+      timestamp: new Date().toISOString(),
+    };
+
+    console.log("📤 Enviando webhook para:", settings.webhook_url);
+
+    const response = await fetch(settings.webhook_url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const responseBody = await response.text();
+    const success = response.ok;
+
+    console.log(`${success ? "✅" : "❌"} Webhook ${success ? "enviado" : "falhou"}:`, response.status);
+
+    await supabase.from("webhook_logs").insert({
+      user_id: userId,
+      webhook_url: settings.webhook_url,
+      event_type: eventType,
+      payload: payload,
+      response_status: response.status,
+      response_body: responseBody.substring(0, 1000),
+      success: success,
+    });
+
+  } catch (error) {
+    console.error("❌ Erro ao enviar webhook:", error);
+    
+    await supabase.from("webhook_logs").insert({
+      user_id: userId,
+      webhook_url: "error",
+      event_type: eventType,
+      payload: paymentData,
+      response_status: 0,
+      response_body: error instanceof Error ? error.message : "Unknown error",
+      success: false,
+    });
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -39,16 +103,35 @@ serve(async (req) => {
       date: new Date().toISOString(),
     }, { onConflict: "payment_id" });
 
+    let userId: string | null = null;
+    const email = payment.payer.email;
+    const { data } = await supabase.auth.admin.listUsers();
+    const existingUser = data?.users?.find((u) => u.email === email);
+
     // Se aprovado, marcar usuário como premium
     if (payment.status === "approved") {
-      const email = payment.payer.email;
-      const { data } = await supabase.auth.admin.listUsers();
-      const existingUser = data?.users?.find((u) => u.email === email);
-
       if (existingUser) {
+        userId = existingUser.id;
         await supabase.from("profiles").update({ is_premium: true }).eq("id", existingUser.id);
         console.log("✅ Usuário atualizado para premium:", existingUser.email);
       }
+    }
+
+    // Enviar webhook para URL configurada pelo usuário
+    if (existingUser) {
+      let eventType = "payment_pending";
+      if (payment.status === "approved") eventType = "payment_success";
+      else if (payment.status === "rejected" || payment.status === "cancelled") eventType = "payment_failed";
+
+      const paymentData = {
+        id: payment.id.toString(),
+        email: payment.payer.email,
+        amount: payment.transaction_amount,
+        status: payment.status,
+        payment_method: payment.payment_type_id,
+      };
+
+      await sendWebhook(supabase, existingUser.id, eventType, paymentData);
     }
 
     return new Response(JSON.stringify({ ok: true }), {

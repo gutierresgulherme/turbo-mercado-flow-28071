@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, LogOut, Sparkles, TrendingUp, ShoppingBag, Crown } from "lucide-react";
+import { Plus, LogOut, Sparkles, TrendingUp, ShoppingBag, Crown, Settings } from "lucide-react";
 interface Ad {
   id: string;
   title: string;
@@ -82,6 +82,10 @@ const Dashboard = () => {
                 <Crown className="mr-2 h-4 w-4" />
                 Admin
               </Button>}
+            <Button onClick={() => navigate("/webhook-settings")} variant="outline">
+              <Settings className="mr-2 h-4 w-4" />
+              Webhook
+            </Button>
             <Button onClick={() => navigate("/create")} className="bg-gradient-primary hover:opacity-90">
               <Plus className="mr-2 h-4 w-4" />
               Novo Anúncio
